@@ -1,0 +1,237 @@
+openapi: 3.1.0
+info:
+  title: Chatty API
+  version: 1.0.0
+  description: >-
+    Self-hosted AI chat interface for Mimir/Qwen. No authentication — restrict access at the
+    network layer. Health/statistics reflect real PostgreSQL data.
+  license: { name: MIT }
+servers:
+  - url: http://localhost:3333
+tags:
+  - { name: system }
+  - { name: conversations }
+  - { name: generation }
+  - { name: settings }
+
+paths:
+  /health:
+    get:
+      tags: [system]
+      summary: Health + usage counters
+      responses:
+        "200": { description: Healthy or degraded (Mimir down), content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+        "503": { description: Database unreachable (critical) }
+
+  /api/stats:
+    get:
+      tags: [system]
+      summary: Analytics report
+      responses:
+        "200": { description: Report, content: { application/json: { schema: { $ref: "#/components/schemas/Stats" } } } }
+
+  /api/models:
+    get:
+      tags: [system]
+      summary: Discover models from Mimir
+      responses:
+        "200": { description: Models, content: { application/json: { schema: { type: object } } } }
+        "502": { description: Model discovery failed }
+
+  /api/events:
+    get:
+      tags: [system]
+      summary: Global SSE event stream (hello, heartbeats, lifecycle)
+      responses:
+        "200": { description: event-stream, content: { "text/event-stream": {} } }
+
+  /api/conversations:
+    get:
+      tags: [conversations]
+      parameters:
+        - { in: query, name: q, schema: { type: string } }
+        - { in: query, name: include_archived, schema: { type: boolean } }
+        - { in: query, name: limit, schema: { type: integer } }
+      responses:
+        "200":
+          description: List/search
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversations: { type: array, items: { $ref: "#/components/schemas/Conversation" } }
+                  query: { type: string }
+    post:
+      tags: [conversations]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object, properties: { title: { type: string } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Conversation" } } } }
+
+  /api/conversations/{id}:
+    parameters: [ { $ref: "#/components/parameters/ConvId" } ]
+    get:
+      tags: [conversations]
+      responses:
+        "200": { description: Conversation, content: { application/json: { schema: { $ref: "#/components/schemas/Conversation" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [conversations]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, properties: { title: { type: string }, archived: { type: boolean } } }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/Conversation" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [conversations]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: Generating; stop first }
+
+  /api/conversations/{id}/messages:
+    parameters: [ { $ref: "#/components/parameters/ConvId" } ]
+    get:
+      tags: [conversations]
+      responses:
+        "200":
+          description: Messages (chronological)
+          content:
+            application/json:
+              schema: { type: object, properties: { messages: { type: array, items: { $ref: "#/components/schemas/Message" } } } }
+    post:
+      tags: [conversations]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [content], properties: { role: { type: string, enum: [user, system] }, content: { type: string } } }
+      responses:
+        "201": { description: Appended, content: { application/json: { schema: { $ref: "#/components/schemas/Message" } } } }
+
+  /api/conversations/{id}/generate:
+    parameters: [ { $ref: "#/components/parameters/ConvId" } ]
+    post:
+      tags: [generation]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object, properties: { content: { type: string } } }
+      responses:
+        "200": { description: SSE generation stream, content: { "text/event-stream": {} } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: A generation is already running }
+        "413": { description: Message too long }
+
+  /api/conversations/{id}/regenerate:
+    parameters: [ { $ref: "#/components/parameters/ConvId" } ]
+    post:
+      tags: [generation]
+      responses:
+        "200": { description: SSE generation stream, content: { "text/event-stream": {} } }
+        "409": { description: A generation is already running }
+
+  /api/conversations/{id}/stop:
+    parameters: [ { $ref: "#/components/parameters/ConvId" } ]
+    post:
+      tags: [generation]
+      responses:
+        "200": { description: Cancellation result, content: { application/json: { schema: { type: object, properties: { stopped: { type: boolean } } } } } }
+
+  /api/conversations/{id}/export:
+    parameters:
+      - { $ref: "#/components/parameters/ConvId" }
+      - { in: query, name: format, schema: { type: string, enum: [markdown, json], default: markdown } }
+    get:
+      tags: [conversations]
+      responses:
+        "200": { description: Exported file (attachment) }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/settings:
+    get:
+      tags: [settings]
+      responses:
+        "200": { description: Effective settings, content: { application/json: { schema: { type: object } } } }
+    patch:
+      tags: [settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SettingsPatch" }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { type: object } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+components:
+  parameters:
+    ConvId:
+      in: path
+      name: id
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    BadRequest: { description: Invalid request, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+    NotFound: { description: Not found, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  schemas:
+    Error: { type: object, properties: { error: { type: string } } }
+    Conversation:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        archived: { type: boolean }
+        message_count: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    Message:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        conversation_id: { type: string, format: uuid }
+        role: { type: string, enum: [user, assistant, system] }
+        content: { type: string }
+        status: { type: string, enum: [pending, streaming, complete, failed, stopped] }
+        model: { type: string }
+        prompt_tokens: { type: integer }
+        completion_tokens: { type: integer }
+        latency_ms: { type: integer }
+        error: { type: string }
+        created_at: { type: string, format: date-time }
+        completed_at: { type: string, format: date-time }
+    Health:
+      type: object
+      properties:
+        status: { type: string, enum: [healthy, degraded, unhealthy] }
+        service: { type: string }
+        version: { type: string }
+        uptime_seconds: { type: integer }
+        database: { type: object, properties: { status: { type: string }, latency_ms: { type: integer }, error: { type: string } } }
+        mimir: { type: object, properties: { status: { type: string }, model: { type: string }, latency_ms: { type: integer } } }
+        statistics: { type: object }
+    Stats:
+      allOf:
+        - { type: object, properties:
+              { messages_by_role: { type: object }, avg_latency_ms: { type: number },
+                model_usage: { type: array, items: { type: object } },
+                daily_activity_7d: { type: array, items: { type: object } },
+                daily_activity_30d: { type: array, items: { type: object } } } }
+    SettingsPatch:
+      type: object
+      properties:
+        temperature: { type: number, minimum: 0, maximum: 2 }
+        max_tokens: { type: integer, minimum: 1, maximum: 8192 }
+        thinking: { type: boolean }
+        max_context_messages: { type: integer, minimum: 1, maximum: 200 }
+        max_context_tokens: { type: integer, minimum: 64, maximum: 16384 }

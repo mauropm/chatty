@@ -1,0 +1,24 @@
+# Secrets / local env
+.env
+*.env.local
+
+# Build artifacts
+/bin/
+/dist/
+/chatty
+*.exe
+
+# Test / coverage
+*.test
+coverage.out
+coverage.html
+
+# Data / runtime
+/data/
+*.log
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp

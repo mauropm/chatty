@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#101014" />
+  <meta name="description" content="Chatty — your thoughts, amplified. A local AI chat interface." />
+  <title>Chatty</title>
+  <link rel="icon" href="/static/images/logo.svg" type="image/svg+xml" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="stylesheet" href="/static/css/app.css" />
+  <script src="/static/js/boot.js"></script>
+</head>
+<body>
+  <div class="app" id="app">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar__top">
+        <div class="brand">
+          <span class="brand__mark" id="brandMark"></span>
+          <span class="brand__word">Chatty</span>
+          <span class="brand__tag">beta</span>
+        </div>
+        <button class="btn btn--new" id="newChatBtn" title="New conversation (⌘⇧O)"></button>
+        <div class="search">
+          <span class="search__icon" id="searchIcon"></span>
+          <input id="searchInput" type="text" placeholder="Search conversations" autocomplete="off" spellcheck="false" />
+          <span class="search__kbd">⌘K</span>
+        </div>
+      </div>
+      <nav class="sidebar__scroll" id="convList" aria-label="Conversations"></nav>
+      <div class="sidebar__foot">
+        <div class="status" id="status">
+          <div class="status__row"><span class="dot" id="dotApp"></span><span class="grow" id="statusApp">Chatty</span></div>
+          <div class="status__row"><span class="dot" id="dotDb"></span><span class="grow">Database</span></div>
+          <div class="status__row"><span class="dot" id="dotMimir"></span><span class="grow" id="statusMimir">Inference</span></div>
+          <div class="status__row"><span class="model-chip" id="modelChip">—</span></div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:10px">
+          <button class="icon-btn" id="settingsBtn" title="Settings" style="flex:1"></button>
+          <button class="icon-btn" id="shortcutsBtn" title="Keyboard shortcuts (?)" style="flex:1"></button>
+          <button class="icon-btn" id="themeBtn" title="Toggle theme" style="flex:1"></button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <header class="topbar">
+        <button class="icon-btn only-collapsed" id="openSidebarBtn" title="Open sidebar"></button>
+        <button class="icon-btn" id="collapseBtn" title="Collapse sidebar (⌘B)"></button>
+        <div class="topbar__title" id="convTitle">New conversation</div>
+        <div class="topbar__actions">
+          <button class="icon-btn" id="renameBtn" title="Rename" hidden></button>
+          <button class="icon-btn" id="exportMdBtn" title="Export Markdown" hidden></button>
+          <button class="icon-btn" id="exportJsonBtn" title="Export JSON" hidden></button>
+        </div>
+      </header>
+
+      <div class="convo" id="convo">
+        <div class="convo__inner" id="convoInner"></div>
+      </div>
+
+      <div class="composer-wrap">
+        <form class="composer" id="composer">
+          <textarea id="input" rows="1" placeholder="What's on your mind?" spellcheck="true"></textarea>
+          <div class="composer__bar">
+            <span class="composer__hint"><kbd>↵</kbd> send · <kbd>⇧↵</kbd> newline</span>
+            <span class="composer__count" id="charCount"></span>
+            <span class="composer__spacer"></span>
+            <button type="submit" class="send-btn" id="sendBtn" title="Send (Enter)" disabled></button>
+          </div>
+        </form>
+      </div>
+    </main>
+  </div>
+
+  <div class="scrim" id="scrim"></div>
+  <div class="menu" id="ctxMenu" role="menu"></div>
+
+  <!-- Settings modal -->
+  <div class="overlay" id="settingsOverlay">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Settings">
+      <div class="modal__head">
+        <h2>Settings</h2>
+        <div style="margin-left:auto"><button class="icon-btn" id="settingsClose" title="Close"></button></div>
+      </div>
+      <div class="modal__tabs">
+        <button class="tab active" data-tab="general">General</button>
+        <button class="tab" data-tab="model">Model</button>
+        <button class="tab" data-tab="system">System</button>
+      </div>
+      <div class="modal__body" id="settingsBody"></div>
+    </div>
+  </div>
+
+  <!-- Shortcuts modal -->
+  <div class="overlay" id="shortcutsOverlay">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" style="max-width:460px">
+      <div class="modal__head"><h2>Keyboard shortcuts</h2>
+        <div style="margin-left:auto"><button class="icon-btn" id="shortcutsClose"></button></div>
+      </div>
+      <div class="modal__body" id="shortcutsBody"></div>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <script src="/static/js/vendor/marked.min.js"></script>
+  <script src="/static/js/vendor/purify.min.js"></script>
+  <script src="/static/js/vendor/hljs.min.js"></script>
+  <script src="/static/js/waiting-messages.js" defer></script>
+  <script src="/static/js/app.js" defer></script>
+</body>
+</html>
